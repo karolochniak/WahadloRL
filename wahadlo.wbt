@@ -1,0 +1,112 @@
+#VRML_SIM R2025a utf8
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackground.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/RectangleArena.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/CorrodedMetal.proto"
+EXTERNPROTO "../protos/Pioneer3dx.proto"
+
+WorldInfo {
+  basicTimeStep 8
+  contactProperties [
+    ContactProperties {
+      softCFM 0.0001
+    }
+  ]
+}
+Viewpoint {
+  orientation 0.09418386280781617 0.06611995983942216 -0.9933567087896632 1.6199835748653104
+  position -0.6341035704337636 2.0960507136642295 0.8793157950488331
+  follow "Pioneer 3-DX"
+  followType "Mounted Shot"
+}
+TexturedBackground {
+}
+TexturedBackgroundLight {
+}
+RectangleArena {
+  floorSize 20 1
+}
+Pioneer3dx {
+  translation -0.6947212157707782 -1.8468626108902794e-09 0.09730710283161993
+  rotation 3.329300822142077e-07 -0.9999999999999445 -9.362873853964866e-09 0.03865992035304357
+  controller "wahadlo_lqr"
+  extensionSlot [
+    Pose {
+      translation -0.1 0 0.63
+      children [
+        HingeJoint {
+          jointParameters HingeJointParameters {
+            position 0.03845
+            axis 0 1 0
+            dampingConstant 0.01
+          }
+          device [
+            PositionSensor {
+              name "hinge sensor"
+            }
+          ]
+          endPoint Solid {
+            translation -0.011767298105551383 1.0590010424362581e-14 -0.3058906746982442
+            rotation -1.662860720822164e-24 -1 7.574935187018943e-24 6.244735307179588
+            children [
+              Pose {
+                translation 0 0 0.16
+                children [
+                  Shape {
+                    geometry Cylinder {
+                      height 0.3
+                      radius 0.01
+                    }
+                  }
+                ]
+              }
+              Shape {
+                geometry Sphere {
+                  radius 0.04
+                }
+              }
+            ]
+            boundingObject Sphere {
+              radius 0.02
+            }
+            physics Physics {
+              density -1
+              mass 0.5
+              centerOfMass [
+                0 0 0
+              ]
+            }
+            translationStep 0
+            rotationStep 0.261789
+          }
+        }
+      ]
+    }
+    Solid {
+      translation -0.1 -0.07 0.39
+      children [
+        Pose {
+          translation 0 0.04 0.24
+          children [
+            Shape {
+              appearance CorrodedMetal {
+              }
+              geometry Box {
+                size 0.02 0.08 0.02
+              }
+            }
+          ]
+        }
+        Shape {
+          appearance CorrodedMetal {
+          }
+          geometry Box {
+            size 0.04 0.02 0.5
+          }
+        }
+      ]
+      name "statyw"
+    }
+  ]
+}
