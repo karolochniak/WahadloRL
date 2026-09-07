@@ -10,7 +10,7 @@ try:
     from stable_baselines3 import PPO
     from stable_baselines3.common.env_checker import check_env
 except ImportError:
-    sys.exit('Błąd importu. Uruchom: "pip install numpy gymnasium stable-baselines3"')
+    sys.exit('Bład importu. Uruchom: "pip install numpy gymnasium stable-baselines3"')
 
 
 class PioneerSwingUpEnv(Supervisor, gym.Env):
