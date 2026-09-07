@@ -1,40 +1,25 @@
-# KUKA Pendulum RL (PPO) 🤖⚖️
+# Inverted Pendulum on a Pioneer Robot (PPO vs LQR vs PID)
 
-> **🚧 Work in Progress:** This project is currently under active development. The custom robot model and the simulation environment are still being refined and expanded.
+Welcome to our project! We stabilized an inverted pendulum on a Pioneer 3-DX robot using Webots. To give ourselves something cool to compare in our final report, we implemented three different control approaches: classic PID, LQR, and Reinforcement Learning (PPO).
 
-An applied Reinforcement Learning (RL) project focused on teaching a custom KUKA robot model to balance an inverted pendulum. The agent is trained using the **Proximal Policy Optimization (PPO)** algorithm within a custom OpenAI Gym environment.
+##  What's inside the files?
 
----
+* **`wahadlo.wbt`** – The Webots world file (contains the physics, robot, and environment setup).
+* **`PPORL.py`** – The RL agent script. It runs the simulation using our trained PPO model. It also handles generating plots.
+* **`pioneer_swingup_model_final.zip`** – Our fully trained neural network model. **Important:** Do not unzip this file! The `stable-baselines3` library reads it straight from the `.zip`. Just keep it in the same directory as the script.
+* **`wahadlo_lqr.py`** – The LQR controller script.
+* **`wahadlo_PID.py`** – The classic PID controller script.
 
-## 🎯 About the Project
+## How to run it
+* Open the world: Launch Webots, go to File -> Open World... and select the wahadlo.wbt file.
+* Pause it: Immediately pause the simulation in Webots so the robot doesn't fall over or drive away before your code connects.
+* Run the controller:
+* The easy way (extern): Make sure the robot's controller field in the Webots node tree is set to <extern>. Then, open your IDE (like PyCharm) or terminal and simply run the script you want to test (e.g., python PPORL.py).
+* The built-in way: Click on the robot node in Webots, change the controller field to the script you want to use, and hit "Play" at the top of the Webots window.
+* Check the plots: If you're running the PPORL.py script, let the episode finish. The code will automatically generate and save some clean, light-themed trajectory plots right in your project folder.
+## Prerequisites
 
-The core objective of this project is to develop a reliable control policy for a robotic arm to keep a pendulum perfectly balanced. By utilizing Reinforcement Learning, the robot learns through trial and error, continuously improving its balancing strategy based on the rewards it receives from the environment.
+Before you run this, make sure you have Webots installed and a Python environment ready (e.g., via PyCharm). You just need to install a few packages in your terminal:
 
-**Key Technologies & Concepts:**
-*   **Reinforcement Learning (RL):** Training an agent to make sequential decisions.
-*   **PPO Algorithm:** A robust and efficient policy gradient method used to train the balancing model.
-*   **OpenAI Gym:** Used to create a custom, standardized environment for the robot to interact with.
-*   **TensorBoard:** Utilized for tracking and visualizing training metrics (e.g., reward progression, loss).
-
----
-
-## 📂 Project Structure
-
-*   `main.py` — The main entry point of the project. Handles the initialization of the environment and the execution of the training or testing loops.
-*   `openai_gym.py` — Contains the custom OpenAI Gym environment implementation specifically designed for the KUKA robot and the pendulum physics.
-*   `kuka_balans_model.zip` — A pre-trained PPO model. It is bundled and ready to be loaded if you just want to watch the robot play/balance without retraining.
-*   `kuka_tensorboard/` — Directory containing the log files generated during training. These can be visualized using TensorBoard to analyze the learning process.
-
----
-
-## 🚀 Getting Started
-
-*(Note: Setup instructions will be expanded as the project matures).*
-
-### Prerequisites
-Make sure you have the required Python libraries installed (e.g., `stable-baselines3`, `gymnasium`, `tensorboard`).
-
-### Viewing the Pre-trained Model
-To see the robot in action using the already trained model (`kuka_balans_model.zip`), you can run the main script (ensure the script is set to evaluation/render mode):
 ```bash
-python main.py
+pip install numpy matplotlib gymnasium stable-baselines3
