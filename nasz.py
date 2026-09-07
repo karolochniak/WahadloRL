@@ -22,11 +22,11 @@ class PioneerSwingUpEnv(Supervisor, gym.Env):
         self.current_step = 0
 
         high = np.array([
-            self.x_threshold * 2,  # pos_x
-            np.finfo(np.float32).max,  # vel_x
-            1.0,  # cos(angle)
-            1.0,  # sin(angle)
-            np.finfo(np.float32).max  # ang_vel
+            self.x_threshold * 2,
+            np.finfo(np.float32).max,
+            1.0,
+            1.0,
+            np.finfo(np.float32).max
         ], dtype=np.float32)
 
         self.action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=(1,), dtype=np.float32)
@@ -48,10 +48,7 @@ class PioneerSwingUpEnv(Supervisor, gym.Env):
             wheel = self.getDevice(name)
             wheel.setPosition(float('inf'))
             wheel.setVelocity(0)
-
-            # LIMIT OD PIOTRKA: Maksymalne przyspieszenie = 60.0 rad/s^2
             wheel.setAcceleration(60.0)
-
             self.__wheels.append(wheel)
 
         self.__sensor = self.getDevice('hinge sensor')
@@ -64,8 +61,6 @@ class PioneerSwingUpEnv(Supervisor, gym.Env):
 
     def step(self, action):
         self.current_step += 1
-
-
         speed = float(action[0]) * 20.0
 
         for wheel in self.__wheels:
@@ -76,7 +71,6 @@ class PioneerSwingUpEnv(Supervisor, gym.Env):
 
         robot = self.getSelf()
         endpoint = self.getFromDef("WAHADLO_SOLID")
-
         pos_x = robot.getPosition()[0]
         vel_x = robot.getVelocity()[0]
         angle = self.__sensor.getValue() if self.__sensor else 0.0
@@ -90,16 +84,10 @@ class PioneerSwingUpEnv(Supervisor, gym.Env):
             ang_vel
         ], dtype=np.float32)
 
-        # 1. Nagroda za postawienie do pionu
         reward = float((1.0 - np.cos(angle)) / 2.0)
-
-        # 2. Kara za odjeżdżanie od środka (ściąganie na pos_x = 0)
         reward -= 0.05 * abs(pos_x)
-
-        # 3. Kara za zbyt duże zrywy silników:
         reward -= 0.02 * (float(action[0]) ** 2)
 
-        # 3. Nieliniowe Tłumiki (Reward Shaping)
         if np.cos(angle) > 0.9:
             reward -= 0.1 * abs(vel_x)
             reward -= 0.1 * abs(ang_vel)
@@ -120,15 +108,11 @@ def main():
     TRAIN_MODE = False
 
     if TRAIN_MODE:
-        print("Rozpoczynamy trening...")
         model = PPO('MlpPolicy', env, verbose=2, device='cpu')
         model.learn(total_timesteps=1000000)
         model.save("pioneer_swingup_model_final")
     else:
-        print("Wczytuję gotowy model...")
         model = PPO.load("pioneer_swingup_model_final", env=env)
-
-        print("Zaczynamy pokaz i zbieranie danych (1 epizod)...")
         obs, _ = env.reset()
 
         positions = []
@@ -136,7 +120,6 @@ def main():
         times = []
         current_step = 0
 
-        # PĘTLA SYMULACJI (zbieranie danych)
         while True:
             pos_x = obs[0]
             angle_rad = math.atan2(obs[3], obs[2])
@@ -154,10 +137,8 @@ def main():
 
             if terminated or truncated:
                 print(f"Koniec epizodu! Zabrano {current_step} próbek ({current_time:.2f} s).")
-                break  # To wyskakuje z pętli while True!
-
-        # --- TEN FRAGMENT MUSI BYĆ POZA PĘTLĄ (mniej wcięć z lewej strony) ---
-        print("Rysowanie wykresów...")
+                break
+                
         plt.style.use('default')
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
         fig.patch.set_facecolor('white')
@@ -190,7 +171,6 @@ def main():
                     bbox_inches='tight')
         print("Zapisano jasny wykres 'trajektoria_lotu_czas_jasny.png'!")
 
-        # Zamykamy całkowicie środowisko i skrypt po narysowaniu jednego wykresu
         env.close()
         import sys
         sys.exit(0)
