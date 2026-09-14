@@ -1,17 +1,19 @@
 import sys
+import os
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import math
 
 from controller import Supervisor
-from sympy import true
 
 try:
     import gymnasium as gym
     from stable_baselines3 import PPO
     from stable_baselines3.common.env_checker import check_env
+    from stable_baselines3.common.monitor import Monitor
 except ImportError:
-    sys.exit('Błąd importu. Uruchom: "pip install numpy gymnasium stable-baselines3"')
+    sys.exit('Błąd importu. Uruchom: "pip install numpy pandas gymnasium stable-baselines3"')
 
 
 class PioneerSwingUpEnv(Supervisor, gym.Env):
@@ -52,8 +54,8 @@ class PioneerSwingUpEnv(Supervisor, gym.Env):
             wheel.setPosition(float('inf'))
             wheel.setVelocity(0)
 
-            # KOREKTA PRZYSPIESZENIA (zgodnie z wymogami)
-            wheel.setAcceleration(60.0)
+            # Limit przyspieszenia (rad/s^2)
+            wheel.setAcceleration(100.0)
             self.__wheels.append(wheel)
 
         self.__sensor = self.getDevice('hinge sensor')
@@ -67,7 +69,6 @@ class PioneerSwingUpEnv(Supervisor, gym.Env):
     def step(self, action):
         self.current_step += 1
 
-        # KOREKTA PRĘDKOŚCI MAKSYMALNEJ (ograniczenie do 20)
         speed = float(action[0]) * 20.0
 
         for wheel in self.__wheels:
@@ -108,54 +109,56 @@ class PioneerSwingUpEnv(Supervisor, gym.Env):
 
 
 def main():
-    env = PioneerSwingUpEnv()
-    check_env(env)
-
     TRAIN_MODE = False
+    CURRENT_SEED = 1024
+
+    log_directory = "./logs_ppo"
 
     if TRAIN_MODE:
-        print("Rozpoczynamy trening...")
-        model = PPO('MlpPolicy', env, verbose=2, device='cpu')
+        os.makedirs(log_directory, exist_ok=True)
+
+        env = PioneerSwingUpEnv()
+        check_env(env)
+
+        env = Monitor(env, os.path.join(log_directory, f"trening_seed_{CURRENT_SEED}"))
+        model = PPO('MlpPolicy', env, verbose=1, device='cpu', seed=CURRENT_SEED, tensorboard_log="./ppo_tensorboard/")
         model.learn(total_timesteps=1000000)
-        model.save("pioneer_swingup_model_10rad")
+
+        model_name = f"pioneer_swingup_model_seed_{CURRENT_SEED}"
+        model.save(model_name)
+        print(f"\n---> Zapisano wyuczony model jako: {model_name}.zip")
+
+        env.close()
+        sys.exit(0)
+
     else:
-        print("Wczytuję gotowy model...")
-        model = PPO.load("pioneer_swingup_model_final.zip", env=env)
+        # Kod ewaluacji
+        print(f"Wczytuję gotowy model (Seed: {CURRENT_SEED}) do ewaluacji...")
+        env = PioneerSwingUpEnv()
+
+        model_filename = f"pioneer_swingup_model_seed_{CURRENT_SEED}.zip"
+        if not os.path.exists(model_filename):
+            sys.exit(f"Brak pliku {model_filename}! Najpierw wytrenuj model.")
+
+        model = PPO.load(model_filename, env=env)
 
         obs, _ = env.reset()
-
         positions = []
         raw_angles_rad = []
         actions_list = []
         times = []
         current_step = 0
 
-        ENABLE_NOISE = False
-        ENABLE_WIND = False
-
-        print(f"Start epizodu (Szum: {ENABLE_NOISE}, Wiatr: {ENABLE_WIND})...")
 
         while True:
             pos_x = obs[0]
             angle_rad = math.atan2(obs[3], obs[2])
-
             current_time = current_step * 0.04
-
-            if ENABLE_WIND and 5.0 <= current_time <= 5.1:
-                env.wind_force = 3.0
-            else:
-                env.wind_force = 0.0
 
             positions.append(pos_x)
             raw_angles_rad.append(angle_rad)
             times.append(current_time)
-
             noisy_obs = obs.copy()
-            if ENABLE_NOISE:
-                noise_angle_rad = np.random.normal(0.0, 0.04)
-                noisy_angle = angle_rad + noise_angle_rad
-                noisy_obs[2] = math.cos(noisy_angle)
-                noisy_obs[3] = math.sin(noisy_angle)
 
             action, _ = model.predict(noisy_obs, deterministic=True)
             actions_list.append(float(action[0]))
@@ -171,26 +174,25 @@ def main():
         positions = np.array(positions)
         actions = np.array(actions_list)
 
-        target_angle = 180.0
         target_pos = 0.0
-        rms_angle = np.sqrt(np.mean((angles_deg - target_angle) ** 2))
+        angle_errors = (angles_deg % 360.0) - 180.0
+        rms_angle = np.sqrt(np.mean(angle_errors ** 2))
         rms_pos = np.sqrt(np.mean((positions - target_pos) ** 2))
         dt = 0.04
         energy_measure = np.sum(actions ** 2) * dt
+        stabilization_step = 100
+        rms_angle_stab = np.sqrt(np.mean(angle_errors[stabilization_step:] ** 2))
+        rms_pos_stab = np.sqrt(np.mean((positions[stabilization_step:] - target_pos) ** 2))
+
+        print(f"RMS Kąta (Sama stabilizacja u góry): {rms_angle_stab:.4f} stopni")
 
         with open("metryki_PPO.txt", "w") as f:
-            f.write(f"--- WYNIKI PPO (Szum: {ENABLE_NOISE}, Wiatr: {ENABLE_WIND}) ---\n")
+            f.write(f"--- WYNIKI PPO (Seed: {CURRENT_SEED} ---\n")
             f.write(f"Czas trwania: {current_time:.2f} s\n")
             f.write(f"RMS bledu kata (wzgledem 180 deg): {rms_angle:.4f} stopni\n")
             f.write(f"RMS bledu pozycji (wzgledem 0 m): {rms_pos:.4f} m\n")
             f.write(f"Miara energii sterowania (calka u^2 dt): {energy_measure:.4f}\n")
 
-        print("\n--- ZAPISANO METRYKI DO PLIKU: metryki_PPO.txt ---")
-        print(f"RMS Kąta:    {rms_angle:.4f} stopni")
-        print(f"RMS Pozycji: {rms_pos:.4f} m")
-        print(f"Energia:     {energy_measure:.4f}\n")
-
-        print("Rysowanie połączonego wykresu...")
         plt.style.use('default')
         fig, ax1 = plt.subplots(figsize=(10, 6))
         fig.patch.set_facecolor('white')
@@ -200,10 +202,8 @@ def main():
         line1, = ax1.plot(times, angles_deg, color='#005b82', linewidth=2.5, label='kąt')
         line2, = ax2.plot(times, positions, color='#e26b32', linewidth=2.5, label='pozycja')
 
-        if ENABLE_WIND:
-            ax1.axvspan(5.0, 5.1, color='#ffe082', alpha=0.3, label='Podmuch wiatru 2N')
-
-        ax1.set_title('Regulacja PPO', color='black', pad=15, fontweight='bold', fontsize=14)
+        ax1.set_title(f'Regulacja PPO (Model Seed: {CURRENT_SEED})', color='black', pad=15, fontweight='bold',
+                      fontsize=14)
         ax1.set_xlabel('Czas symulacji [s]', color='black', fontsize=11)
         ax1.set_ylabel('Pozycja kątowa wahadła [°]', color='black', fontsize=11)
         ax2.set_ylabel('Pozycja wózka [m]', color='black', fontsize=11)
@@ -219,12 +219,13 @@ def main():
         ax2.spines['top'].set_visible(False)
 
         plt.tight_layout()
-        plot_filename = 'wykres_PPO.png'
+        plot_filename = f'wykres_ewaluacji_PPO_seed_{CURRENT_SEED}.png'
         plt.savefig(plot_filename, dpi=300, facecolor='white', edgecolor='none')
-        print(f"Zapisano wykres jako '{plot_filename}'!")
+        print(f"---> Zapisano wykres jako {plot_filename}")
 
         env.close()
         sys.exit(0)
+
 
 if __name__ == '__main__':
     main()
