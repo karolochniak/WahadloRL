@@ -6,7 +6,7 @@ Welcome to our project! We stabilized an inverted pendulum on a Pioneer 3-DX rob
 
 * **`wahadlo.wbt`** – The Webots world file (contains the physics, robot, and environment setup).
 * **`PPORL.py`** – The RL agent script. It runs the simulation using our trained PPO model. It also handles generating plots.
-* **`pioneer_swingup_model_final.zip`** – Our fully trained neural network model. **Important:** Do not unzip this file! The `stable-baselines3` library reads it straight from the `.zip`. Just keep it in the same directory as the script.
+* **`pioneer_swingup_model_seed_XXX.zip`** – Our fully trained neural network models. **Important:** Do not unzip this file! The `stable-baselines3` library reads it straight from the `.zip`. Just keep it in the same directory as the script.
 * **`wahadlo_lqr.py`** – The LQR controller script.
 * **`wahadlo_PID.py`** – The classic PID controller script.
 
